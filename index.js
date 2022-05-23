@@ -21,7 +21,7 @@ const corsConfig = {
   app.options('*', cors(corsConfig))
 
 
-function checkJwt(req, res, next) {
+  function checkJwt(req, res, next) {
     const hederAuth = req.headers.authorization
     if (!hederAuth) {
         return res.status(401).send({ message: 'unauthorized access.try again' })
@@ -101,7 +101,7 @@ async function run() {
    //Verify Admin Role 
    const verifyAdmin = async (req, res, next) => {
     const requester = req.decoded.email;
-    const requesterAccount = await userCollection.findOne({
+    const requesterAccount = await usersCollection.findOne({
         email: requester,
     });
     if (requesterAccount.role === "admin") {
@@ -124,24 +124,30 @@ async function run() {
                 //API to get admin 
                 app.get("/admin/:email", async (req, res) => {
                     const email = req.params.email;
-                    const user = await userCollection.findOne({ email: email });
+                    const user = await usersCollection.findOne({ email: email });
                     const isAdmin = user.role === "admin";
                     res.send({ admin: isAdmin });
                 });
                 //Authentication API 
                 app.post("/login", async (req, res) => {
                     const user = req.body;
-                    const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+                    const getToken= jwt.sign(user, process.env.ACCESS_JWT_TOKEN, {
                         expiresIn: "1d",
                     });
-                    res.send({ accessToken });
+                    res.send({ getToken });
                 });
+        
          ////API to get all orders
          app.get("/orders", async (req, res) => {
             const orders = await ordersCollection.find({}).toArray();
             res.send(orders);
         });
+        app.post('/order', async (req, res) => {
 
+            const order = req.body;
+            const result = await ordersCollection.insertOne(order)
+            res.send(result)
+        })
         //API to update a order 
         app.put("/orders/:id", async (req, res) => {
             const orderId = req.params.id;
@@ -157,12 +163,20 @@ async function run() {
             );
             res.send(updatedOrder);
         });
-           //API to get orders by user email 
-           app.get("/orders/:email", async (req, res) => {
-            const email = req.params.email;
-            const orders = await ordersCollection.find({ email }).toArray();
-            res.send(orders);
-        });
+          // get orders by email 
+          app.get('/singleOrder', checkJwt, async (req, res) => {
+            const decodedEmail = req.decoded.email
+            const email = req.query.email
+            if (email === decodedEmail) {
+                const query = { email: email }
+            const cursor = ordersCollection.find(query)
+            const items = await cursor.toArray()
+            res.send(items)
+            }
+            else {
+                return res.status(403).send({ message: 'forbidden access' })
+            }
+           })
 
         //API to get all reviews 
         app.get("/reviews", async (req, res) => {
@@ -170,18 +184,13 @@ async function run() {
             res.send(reviews);
         });
         //API to post a review 
-        app.post("/review", checkJwt, async (req, res) => {
-            const decodedEmail = req.decoded.email;
-            const email = req.headers.email;
-            if (email === decodedEmail) {
-                const review = req.body;
-                await reviewsCollection.insertOne(review);
-                res.send(review);
-            } else {
-                res.send("Unauthorized access");
-            }
-        });
-        
+        app.post('/review', async (req, res) => {
+
+            const newReview = req.body;
+            
+            const result = await reviewsCollection.insertOne(newReview);
+            res.send(result)
+        })
         //API to post a product 
         app.post("/product", checkJwt, async (req, res) => {
             const decodedEmail = req.decoded.email;
