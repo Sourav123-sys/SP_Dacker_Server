@@ -110,16 +110,16 @@ async function run() {
         res.status(403).send({ message: "Forbidden" });
     }
         };
-                //API to make Admin by verifyAdmin,
-                app.put("/user/admin/:email", checkJwt,  async (req, res) => {
-                    const email = req.params.email;
-                    const filter = { email: email };
-                    const updateDoc = {
-                        $set: { role: "admin" },
-                    };
-                    const result = await userCollection.updateOne(filter, updateDoc);
-                    res.send(result);
-                });
+                // //API to make Admin by verifyAdmin,
+                // app.put("/user/admin/:email", checkJwt,verifyAdmin,  async (req, res) => {
+                //     const email = req.params.email;
+                //     const filter = { email: email };
+                //     const updateDoc = {
+                //         $set: { role: "admin" },
+                //     };
+                //     const result = await usersCollection.updateOne(filter, updateDoc);
+                //     res.send(result);
+                // });
         
                 //API to get admin 
                 app.get("/admin/:email", async (req, res) => {
@@ -251,19 +251,59 @@ async function run() {
         const item = await partsCollection.findOne(query)
         res.send(item)
     })
+
+
+        
+          //create user and jwt
+          app.put('/user/:email', async (req, res) => {
+            const email = req.params.email;
+            const user = req.body
+            const filter = { email: email }
+            const options = { upsert: true }
+            const updateDoc = {
+
+                $set: user,
+            };
+            const result = await usersCollection.updateOne(filter, updateDoc, options)
+          const getToken = jwt.sign({email:email},process.env.ACCESS_JWT_TOKEN,{expiresIn:'1d'})
+            res.send({result,getToken})
+          })
+        //
+         //make admin
+         app.put('/user/admin/:email', checkJwt,verifyAdmin, async (req, res) => {
+         
+            const email = req.params.email;
+          
+                const filter = { email: email }
+                const updateDoc = {
+                    $set: {role:'admin'},
+                };
+                const result = await usersCollection.updateOne(filter, updateDoc,)
+            
+                res.send(result)
+            
+            
+      
+         })
+        //get user information
+        
+        app.get('/user',checkJwt, async (req, res) => {
+            const users = await usersCollection.find().toArray()
+            res.send(users)
+        })
         //token
 
-        app.post('/signin', async (req, res) => {
-          const user = req.body;
-          console.log(req.body,'user')
+        // app.post('/signin', async (req, res) => {
+        //   const user = req.body;
+        //   console.log(req.body,'user')
           
-          const getToken = jwt.sign(user, process.env.ACCESS_JWT_TOKEN, {
-              expiresIn: '1d'
-          });
+        //   const getToken = jwt.sign(user, process.env.ACCESS_JWT_TOKEN, {
+        //       expiresIn: '1d'
+        //   });
          
-          res.send({ getToken });
+        //   res.send({ getToken });
 
-      })
+     // })
     }
     finally {
 
