@@ -78,7 +78,7 @@ async function run() {
         await client.connect();
         const partsCollection = client.db('SP-Menufecture').collection('parts')
         const usersCollection = client.db('SP-Menufecture').collection('users')
-      //  console.log("sp db connected")
+        console.log("sp db connected")
         const ordersCollection = client.db('SP-Menufecture').collection("ordersCollection");
        
         const reviewsCollection = client.db('SP-Menufecture').collection("reviewsCollection");
@@ -237,24 +237,45 @@ async function run() {
             }
         });
 
-        //API to update a tool 
-        app.put("/product/:id", checkJwt, async (req, res) => {
+       // API to update a tool 
+        app.patch("/parts/:id", checkJwt,verifyAdmin, async (req, res) => {
             const decodedEmail = req.decoded.email;
             const email = req.headers.email;
-            if (email === decodedEmail) {
-                const id = req.params.id;
-                const product = req.body;
+            if ( decodedEmail) {
+                const id = req.params.id
+                const newTools = req.body
+              //  console.log(newTools)
+                const query = { _id: ObjectId(id) }
+                const product =await partsCollection.findOne(query)
+              //  console.log(product,'prd');
                 const options = { upsert: true };
-                await partsCollection.updateOne(
-                    { _id: ObjectId(id) },
-                    { $set: product },
-                    options
-                );
-                res.send(product);
+                const updateDoc = {
+                    $set:newTools
+                }
+                const result = await partsCollection.updateOne(query, updateDoc, options)
+                res.send(result);
             } else {
                 res.send("Unauthorized access");
             }
         });
+
+//         app.put('/parts/:id', checkJwt,verifyAdmin, async (req, res) => {
+//             const id = req.params.id
+//             const newTools = req.body
+//    console.log(newTools)
+//             const query = { _id: ObjectId(id) }
+//             const options = { upsert: true };
+//             const updateDoc = {
+//                 $set: {
+//                     newTools
+//                 }
+//             }
+        
+//             const result = await partsCollection.updateOne(query, updateDoc, options)
+//             res.send(result);
+//         })
+
+
 
    // get parts from db
    app.get('/parts', async (req, res) => {
@@ -302,28 +323,16 @@ async function run() {
             
                 res.send(result)
             
-            
-      
          })
+        
+        
         //get user information
         
         app.get('/user',checkJwt, async (req, res) => {
             const users = await usersCollection.find().toArray()
             res.send(users)
         })
-        //token
-
-        // app.post('/signin', async (req, res) => {
-        //   const user = req.body;
-        //   console.log(req.body,'user')
-          
-        //   const getToken = jwt.sign(user, process.env.ACCESS_JWT_TOKEN, {
-        //       expiresIn: '1d'
-        //   });
-         
-        //   res.send({ getToken });
-
-     // })
+      
     }
     finally {
 
