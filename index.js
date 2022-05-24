@@ -28,18 +28,18 @@ const corsConfig = {
     }
     else {
         const token = hederAuth.split(' ')[1]
-        console.log({token});
+     //   console.log({token});
         jwt.verify(token,process.env.ACCESS_JWT_TOKEN, (err, decoded) => {
             if (err) {
-                console.log(err);
+               // console.log(err);
                 return res.status(403).send({ message: 'forbidden access' })
             }
-            console.log('decoded', decoded);
+         //   console.log('decoded', decoded);
             req.decoded = decoded;
             next()
         })
     }
-    console.log(hederAuth, 'inside chckjwt');
+  //  console.log(hederAuth, 'inside chckjwt');
    
 }
 
@@ -50,7 +50,7 @@ const corsConfig = {
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.eowzq.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
-console.log(process.env.ACCESS_JWT_TOKEN);
+//console.log(process.env.ACCESS_JWT_TOKEN);
 function checkJwt(req, res, next) {
     const hederAuth = req.headers.authorization
     if (!hederAuth) {
@@ -58,18 +58,18 @@ function checkJwt(req, res, next) {
     }
     else {
         const token = hederAuth.split(' ')[1]
-        console.log({token});
+        //console.log({token});
         jwt.verify(token,process.env.ACCESS_JWT_TOKEN, (err, decoded) => {
             if (err) {
-                console.log(err);
+              //  console.log(err);
                 return res.status(403).send({ message: 'forbidden access' })
             }
-            console.log('decoded', decoded);
+            //console.log('decoded', decoded);
             req.decoded = decoded;
             next()
         })
     }
-    console.log(hederAuth, 'inside chckjwt');
+   // console.log(hederAuth, 'inside chckjwt');
    
 }
 async function run() {
@@ -78,7 +78,7 @@ async function run() {
         await client.connect();
         const partsCollection = client.db('SP-Menufecture').collection('parts')
         const usersCollection = client.db('SP-Menufecture').collection('users')
-        console.log("sp db connected")
+      //  console.log("sp db connected")
         const ordersCollection = client.db('SP-Menufecture').collection("ordersCollection");
        
         const reviewsCollection = client.db('SP-Menufecture').collection("reviewsCollection");
@@ -136,7 +136,12 @@ async function run() {
                     });
                     res.send({ getToken });
                 });
-        
+        //products add
+                app.post('/parts',checkJwt,verifyAdmin, async (req, res) => {
+                    const parts = req.body
+                    const result =await partsCollection.insertOne(parts)
+                    res.send(result)
+        })
          ////API to get all orders
          app.get("/orders", async (req, res) => {
             const orders = await ordersCollection.find({}).toArray();
@@ -162,6 +167,19 @@ async function run() {
                 options
             );
             res.send(updatedOrder);
+        });
+        //order delete
+        app.delete("/order/:id", checkJwt,verifyAdmin, async (req, res) => {
+            const decodedEmail = req.decoded.email;
+            const id = req.params.id;
+            const email = req.headers.email;
+            if ( decodedEmail) {
+                
+              const result =  await ordersCollection.deleteOne({ _id: ObjectId(id) });
+                res.send(result);
+            } else {
+                res.send("Unauthorized access");
+            }
         });
           // get orders by email 
           app.get('/singleOrder', checkJwt, async (req, res) => {
@@ -192,26 +210,28 @@ async function run() {
             res.send(result)
         })
         //API to post a product 
-        app.post("/product", checkJwt, async (req, res) => {
-            const decodedEmail = req.decoded.email;
-            const email = req.headers.email;
-            if (email === decodedEmail) {
-                const product = req.body;
-                await partsCollection.insertOne(product);
-                res.send(product);
-            } else {
-                res.send("Unauthorized access");
-            }
-        });
+        // app.post("/product", checkJwt, async (req, res) => {
+        //     const decodedEmail = req.decoded.email;
+        //     const email = req.headers.email;
+        //     if (email === decodedEmail) {
+        //         const product = req.body;
+        //         await partsCollection.insertOne(product);
+        //         res.send(product);
+        //     } else {
+        //         res.send("Unauthorized access");
+        //     }
+        // });
 
         //API delete a product 
-        app.delete("/product/:id", checkJwt, async (req, res) => {
+        app.delete("/parts/:id", checkJwt,verifyAdmin, async (req, res) => {
             const decodedEmail = req.decoded.email;
             const email = req.headers.email;
-            if (email === decodedEmail) {
-                const id = req.params.id;
-                await partsCollection.deleteOne({ _id: ObjectId(id) });
-                res.send("Deleted");
+            const id = req.params.id;
+            console.log(id,'delete part from client');
+            if (decodedEmail) {
+               
+              const result =  await partsCollection.deleteOne({ _id: ObjectId(id) });
+                res.send(result);
             } else {
                 res.send("Unauthorized access");
             }
