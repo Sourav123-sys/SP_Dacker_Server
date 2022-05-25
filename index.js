@@ -110,16 +110,7 @@ async function run() {
         res.status(403).send({ message: "Forbidden" });
     }
         };
-                // //API to make Admin by verifyAdmin,
-                // app.put("/user/admin/:email", checkJwt,verifyAdmin,  async (req, res) => {
-                //     const email = req.params.email;
-                //     const filter = { email: email };
-                //     const updateDoc = {
-                //         $set: { role: "admin" },
-                //     };
-                //     const result = await usersCollection.updateOne(filter, updateDoc);
-                //     res.send(result);
-                // });
+           
         
                 //API to get admin 
                 app.get("/admin/:email", async (req, res) => {
@@ -357,7 +348,52 @@ async function run() {
             const users = await usersCollection.find().toArray()
             res.send(users)
         })
+//API to get user by user email
+app.get('/user/:email', checkJwt, async (req, res) => {
+    const decodedEmail = req.decoded.email;
+    const email = req.params.email;
+    // console.log("email", email);
+    if (email === decodedEmail) {
+        const query = { email: email }
+        const cursor = usersCollection.find(query)
+        const items = await cursor.toArray()
+        res.send(items)
+    }
+    else {
+        // console.log(param);
+        return res.status(403).send({ message: 'forbidden access' })
 
+    }
+})
+      
+     //API to update a user
+     app.put("/user/:email", async (req, res) => {
+        const email = req.params.email;
+        const user = req.body;
+        console.log("user", user);
+        const query = {
+            email: email
+        };
+        const options = {
+            upsert: true,
+        };
+        const updatedDoc = {
+            $set: {
+               name: user?.name,
+                img: user?.img,
+                number: user?.number,
+                address: user?.address,
+                institute: user?.institute
+            },
+        };
+        const result = await usersCollection.updateOne(
+            query,
+            updatedDoc,
+            options
+        );
+        res.send(result);
+    });
+  
         // transiction id
         
         app.post('/create-payment-intent', async (req, res) => {
