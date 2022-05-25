@@ -9,7 +9,7 @@ const { MongoClient, ServerApiVersion } = require('mongodb');
 const ObjectId = require('mongodb').ObjectId
 const port = process.env.PORT || 4000
 const jwt = require('jsonwebtoken');
-
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 //middleware
 app.use(bodyParser.json())
 //app.use(cors())
@@ -80,7 +80,7 @@ async function run() {
         const usersCollection = client.db('SP-Menufecture').collection('users')
         console.log("sp db connected")
         const ordersCollection = client.db('SP-Menufecture').collection("ordersCollection");
-       
+        const paymentCollection = client.db('SP-Menufecture').collection('payment')
         const reviewsCollection = client.db('SP-Menufecture').collection("reviewsCollection");
 
         
@@ -153,6 +153,23 @@ async function run() {
             const result = await ordersCollection.insertOne(order)
             res.send(result)
         })
+
+        app.patch('/orderPay/:id', checkJwt, async (req, res) => {
+            const id = req.params.id
+            const payment = req.body
+            const filter = { _id: ObjectId(id) }
+            const updateDoc = {
+
+                $set: {
+                    paid: true, 
+                    transactionId:payment.transactionId
+                },
+            };
+            const updateOrder = await ordersCollection.updateOne(filter, updateDoc)
+            const result = await paymentCollection.insertOne(payment)
+            res.send(updateOrder)
+})
+
         //API to update a order 
         app.put("/orders/:id", async (req, res) => {
             const orderId = req.params.id;
@@ -168,8 +185,21 @@ async function run() {
             );
             res.send(updatedOrder);
         });
-        //order delete
+        //order delete by admin
         app.delete("/order/:id", checkJwt,verifyAdmin, async (req, res) => {
+            const decodedEmail = req.decoded.email;
+            const id = req.params.id;
+            const email = req.headers.email;
+            if ( decodedEmail) {
+                
+              const result =  await ordersCollection.deleteOne({ _id: ObjectId(id) });
+                res.send(result);
+            } else {
+                res.send("Unauthorized access");
+            }
+        });
+        //my order delete 
+        app.delete("/myorder/:id", checkJwt, async (req, res) => {
             const decodedEmail = req.decoded.email;
             const id = req.params.id;
             const email = req.headers.email;
@@ -209,18 +239,7 @@ async function run() {
             const result = await reviewsCollection.insertOne(newReview);
             res.send(result)
         })
-        //API to post a product 
-        // app.post("/product", checkJwt, async (req, res) => {
-        //     const decodedEmail = req.decoded.email;
-        //     const email = req.headers.email;
-        //     if (email === decodedEmail) {
-        //         const product = req.body;
-        //         await partsCollection.insertOne(product);
-        //         res.send(product);
-        //     } else {
-        //         res.send("Unauthorized access");
-        //     }
-        // });
+      
 
         //API delete a product 
         app.delete("/parts/:id", checkJwt,verifyAdmin, async (req, res) => {
@@ -259,21 +278,7 @@ async function run() {
             }
         });
 
-//         app.put('/parts/:id', checkJwt,verifyAdmin, async (req, res) => {
-//             const id = req.params.id
-//             const newTools = req.body
-//    console.log(newTools)
-//             const query = { _id: ObjectId(id) }
-//             const options = { upsert: true };
-//             const updateDoc = {
-//                 $set: {
-//                     newTools
-//                 }
-//             }
-        
-//             const result = await partsCollection.updateOne(query, updateDoc, options)
-//             res.send(result);
-//         })
+
 
 
 
@@ -314,12 +319,32 @@ async function run() {
          app.put('/user/admin/:email', checkJwt,verifyAdmin, async (req, res) => {
          
             const email = req.params.email;
-          
                 const filter = { email: email }
                 const updateDoc = {
                     $set: {role:'admin'},
                 };
                 const result = await usersCollection.updateOne(filter, updateDoc,)
+            
+                res.send(result)
+            
+         })
+        // shipping update
+         app.put('/ship/:id',  async (req, res) => {
+         
+             const id = req.params.id;
+         
+             const order = req.body;
+     
+             const options ={ upsert: true}
+             const filter = {_id: ObjectId(id)}
+           //  console.log(filter,"filter email");
+                const updateDoc = {
+                    $set: {
+                        isDeliverd:true
+                    }
+                    
+                };
+                const result = await ordersCollection.updateOne(filter, updateDoc,options)
             
                 res.send(result)
             
@@ -332,6 +357,26 @@ async function run() {
             const users = await usersCollection.find().toArray()
             res.send(users)
         })
+
+        // transiction id
+        
+        app.post('/create-payment-intent', async (req, res) => {
+            const service = req.body
+            const price = service.price
+            const amount = price * 100
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount : amount,
+                currency: 'usd',
+                payment_method_types:['card']
+              });
+              res.send({clientSecret: paymentIntent.client_secret})
+        })
+        app.get('/payment/:id',checkJwt, async (req, res) => {
+            const id = req.params.id
+            const query = { _id: ObjectId(id) }
+            const order = await ordersCollection.findOne(query)
+            res.send(order)
+})
       
     }
     finally {
