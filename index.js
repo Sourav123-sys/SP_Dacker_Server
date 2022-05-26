@@ -202,7 +202,7 @@ async function run() {
                 res.send("Unauthorized access");
             }
         });
-          // get orders by email 
+           get orders by email 
           app.get('/singleOrder', checkJwt, async (req, res) => {
             const decodedEmail = req.decoded.email
             const email = req.query.email
