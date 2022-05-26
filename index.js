@@ -189,7 +189,7 @@ async function run() {
                 res.send("Unauthorized access");
             }
         });
-        //my order delete 
+        my order delete 
         app.delete("/myorder/:id", checkJwt, async (req, res) => {
             const decodedEmail = req.decoded.email;
             const id = req.params.id;
@@ -202,7 +202,7 @@ async function run() {
                 res.send("Unauthorized access");
             }
         });
-           get orders by email 
+           //get orders by email 
           app.get('/singleOrder', checkJwt, async (req, res) => {
             const decodedEmail = req.decoded.email
             const email = req.query.email
